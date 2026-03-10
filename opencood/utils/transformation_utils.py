@@ -261,7 +261,7 @@ def tfm_to_pose_torch(tfm: torch.Tensor, dof: int):
     return pose
 
 
-def x_to_world(pose):
+def x_to_world_origin(pose):
     """
     The transformation matrix from x-coordinate system to carla world system
     Also is the pose in world coordinate: T_world_x
@@ -306,6 +306,70 @@ def x_to_world(pose):
 
     return matrix
 
+def x_to_world(pose):
+    """
+    The transformation matrix from x-coordinate system to carla world system
+    Also is the pose in world coordinate: T_world_x
+
+    Parameters
+    ----------
+    pose : list
+        [x, y, z, roll, yaw, pitch], degree
+
+    Returns
+    -------
+    matrix : np.ndarray
+        The transformation matrix.
+    """
+    x, y, z, roll, yaw, pitch = pose[:]
+
+    # # used for rotation matrix
+    # c_y = np.cos(np.radians(yaw))
+    # s_y = np.sin(np.radians(yaw))
+    # c_r = np.cos(np.radians(roll))
+    # s_r = np.sin(np.radians(roll))
+    # c_p = np.cos(np.radians(pitch))
+    # s_p = np.sin(np.radians(pitch))
+
+    # matrix = np.identity(4)
+
+    # # translation matrix
+    # matrix[0, 3] = x
+    # matrix[1, 3] = y
+    # matrix[2, 3] = z
+
+    # # rotation matrix
+    # matrix[0, 0] = c_p * c_y
+    # matrix[0, 1] = c_y * s_p * s_r - s_y * c_r
+    # matrix[0, 2] = -c_y * s_p * c_r - s_y * s_r
+    # matrix[1, 0] = s_y * c_p
+    # matrix[1, 1] = s_y * s_p * s_r + c_y * c_r
+    # matrix[1, 2] = -s_y * s_p * c_r + c_y * s_r
+    # matrix[2, 0] = s_p
+    # matrix[2, 1] = -c_p * s_r
+    # matrix[2, 2] = c_p * c_r
+    roll= np.radians(roll)
+    pitch = np.radians(pitch)
+    yaw = np.radians(yaw)
+    cr, sr = np.cos(roll), np.sin(roll)
+    cp, sp = np.cos(pitch), np.sin(pitch)
+    cy, sy = np.cos(yaw), np.sin(yaw)
+
+    Rx = np.array([[1, 0, 0],
+                   [0, cr, -sr],
+                   [0, sr, cr]])
+    Ry = np.array([[cp, 0, sp],
+                   [0, 1, 0],
+                   [-sp, 0, cp]])
+    Rz = np.array([[cy, -sy, 0],
+                   [sy, cy, 0],
+                   [0, 0, 1]])
+    R = Rz @ Ry @ Rx
+    matrix = np.identity(4)
+    matrix[:3,:3]=R
+    matrix[:3,3]=[x,y,z]
+
+    return matrix
 
 def x1_to_x2(x1, x2):
     """

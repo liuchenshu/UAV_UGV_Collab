@@ -464,8 +464,8 @@ def getIntermediateheterFusionDataset(cls):
                     "single_object_bbx_mask_torch": single_object_bbx_mask,
                     })
             
-            # exculude all repetitve objects, DAIR-V2X
-            if self.params['fusion']['dataset'] == 'dairv2x':
+            # exculude all repetitve objects, DAIR-V2X或者griffin
+            if self.params['fusion']['dataset'] == 'dairv2x' or self.params['fusion']['dataset'] == 'griffin':
                 if len(object_stack) == 1:
                     object_stack = object_stack[0]
                 else:

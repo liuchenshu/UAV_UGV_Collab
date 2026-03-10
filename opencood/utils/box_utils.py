@@ -1215,8 +1215,8 @@ def load_single_objects_dairv2x_hetero(object_list,
         i = i + 1
 
         lidar_range_z_larger = copy.deepcopy(lidar_range)
-        lidar_range_z_larger[2] -= 1
-        lidar_range_z_larger[5] += 1
+        lidar_range_z_larger[2] -= 50 #1
+        lidar_range_z_larger[5] += 50 #1
 
         bbx_lidar = [x,y,z,h,w,l,rotation] if order=="hwl" else [x,y,z,l,w,h,rotation] # suppose order is in ['hwl', 'lwh']
         bbx_lidar = np.array(bbx_lidar).reshape(1,-1) # [1,7]
