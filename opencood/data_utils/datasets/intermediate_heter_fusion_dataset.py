@@ -465,7 +465,7 @@ def getIntermediateheterFusionDataset(cls):
                     })
             
             # exculude all repetitve objects, DAIR-V2X或者griffin
-            if self.params['fusion']['dataset'] == 'dairv2x' or self.params['fusion']['dataset'] == 'griffin':
+            if self.params['fusion']['dataset'] == 'dairv2x' or self.params['fusion']['dataset'] == 'griffin' or self.params['fusion']['dataset'] == 'agcdrive':
                 if len(object_stack) == 1:
                     object_stack = object_stack[0]
                 else:

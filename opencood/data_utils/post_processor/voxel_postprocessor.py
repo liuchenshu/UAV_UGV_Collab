@@ -271,6 +271,7 @@ class VoxelPostprocessor(BasePostprocessor):
         gt_box3d_tensor : torch.Tensor
             The groundtruth bounding box tensor.
         """
+        # print("使用Voxelpostprocessor进行后处理================================")
         # the final bounding box list
         pred_box3d_list = []
         pred_box2d_list = []
@@ -279,6 +280,7 @@ class VoxelPostprocessor(BasePostprocessor):
             cav_content = data_dict[cav_id]
             # the transformation matrix to ego space
             transformation_matrix = cav_content['transformation_matrix'] # no clean
+            # print(f"CAV {cav_id} 的坐标系转换矩阵: \n {transformation_matrix}")
 
             # rename variable 
             if 'psm' in output_dict[cav_id]:
@@ -307,6 +309,7 @@ class VoxelPostprocessor(BasePostprocessor):
 
             mask = \
                 torch.gt(prob, self.params['target_args']['score_threshold'])
+            # print(f"最大概率值: {prob.max().item()}, 当前阈值: {self.params['target_args']['score_threshold']}")
             mask = mask.view(1, -1)
             mask_reg = mask.unsqueeze(2).repeat(1, 1, 7)
 
@@ -365,16 +368,20 @@ class VoxelPostprocessor(BasePostprocessor):
 
         if len(pred_box2d_list) ==0 or len(pred_box3d_list) == 0:
             return None, None
+        # print(f"坐标系转换后，共有 {len(pred_box3d_list)} 批框")
         # shape: (N, 5)
         pred_box2d_list = torch.vstack(pred_box2d_list)
         # scores
         scores = pred_box2d_list[:, -1]
         # predicted 3d bbx
         pred_box3d_tensor = torch.vstack(pred_box3d_list)
+        # print(f"坐标系转换后，框的范围: x({pred_box3d_tensor[:, 0].min().item()}, {pred_box3d_tensor[:, 0].max().item()}), y({pred_box3d_tensor[:, 1].min().item()}, {pred_box3d_tensor[:, 1].max().item()}), z({pred_box3d_tensor[:, 2].min().item()}, {pred_box3d_tensor[:, 2].max().item()})")
+        # print(pred_box3d_list)
         # remove large bbx
         keep_index_1 = box_utils.remove_large_pred_bbx(pred_box3d_tensor)
         keep_index_2 = box_utils.remove_bbx_abnormal_z(pred_box3d_tensor)
         keep_index = torch.logical_and(keep_index_1, keep_index_2)
+        # print(f"异常过滤前有 {len(keep_index)} 个框，过滤后剩下 {keep_index.sum().item()} 个框")
 
         pred_box3d_tensor = pred_box3d_tensor[keep_index]
         scores = scores[keep_index]
@@ -385,18 +392,23 @@ class VoxelPostprocessor(BasePostprocessor):
                                            scores,
                                            self.params['nms_thresh']
                                            )
+        # # print(keep_index)
 
         pred_box3d_tensor = pred_box3d_tensor[keep_index]
+        # print(f"经过NMS后还剩下 {len(keep_index)} 个框")
+
 
         # select cooresponding score
         scores = scores[keep_index]
-        
+        # print(type(self.params['gt_range']))
         # filter out the prediction out of the range. with z-dim
         pred_box3d_np = pred_box3d_tensor.cpu().numpy()
+        # print(self.params['gt_range'])
         pred_box3d_np, mask = box_utils.mask_boxes_outside_range_numpy(pred_box3d_np,
-                                                    self.params['gt_range'],
+                                                    [-102.4, -51.2, -35, 102.4, 51.2, 35],
                                                     order=None,
                                                     return_mask=True)
+        # print(f"越界过滤后还剩下: {mask.sum().item()} 个框")
         pred_box3d_tensor = torch.from_numpy(pred_box3d_np).to(device=pred_box3d_tensor.device)
         scores = scores[mask]
 
