@@ -1,3 +1,10 @@
+本科毕设：位姿误差干扰下无人机-无人车协同的三维目标检测算法研究
+
+使用数据集：GRFFIN、AGCDRIVE
+
+基于开源项目HEAL开展研究
+
+
 # HEAL (HEterogeneous ALliance)
 [ICLR2024] HEAL: An Extensible Framework for Open Heterogeneous Collaborative Perception
 
