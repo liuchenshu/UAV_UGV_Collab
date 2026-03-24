@@ -4,6 +4,35 @@
 
 基于开源项目HEAL开展研究
 
+# 数据集设置
+
+    """
+    griffin数据格式-
+    data/GRIFFIN
+      |-drone_camera_bottom\griffin_50scenes_25m\griffin-release\drone-side\camera\bottom 无人机摄像头数据.png
+      |-drone_metadata\griffin_50scenes_25m\griffin-release\drone-side 无人机元数据
+        |-calib 相机定标
+        |-label 标签
+        |-pose  位姿
+      |-vehicle_lidar\griffin_50scenes_25m\griffin-release\vehicle-side\lidar\lidar_top  车载激光雷达数据.ply
+      |-vehicle_metadata\griffin_50scenes_25m\griffin-release\vehicle-side 车载元数据
+        |-calib 相机定标
+        |-label 标签
+        |-pose  位姿
+      |-train.json 训练集
+      |-val.json   验证集
+    """
+
+    """
+    AGCDRIVE数据格式
+    data/AGCDRIVE/AGCDRIVE
+        ├── 1  .pcd点云
+        |—— 2  .pcd点云
+        |—— 3  .pcd点云
+        |—— cooperative/ .json文件，包含每一帧的标签和pose等信息
+        train.json
+        val.json
+    """
 
 # HEAL (HEterogeneous ALliance)
 [ICLR2024] HEAL: An Extensible Framework for Open Heterogeneous Collaborative Perception
