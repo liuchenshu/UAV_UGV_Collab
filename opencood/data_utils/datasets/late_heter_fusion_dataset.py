@@ -191,8 +191,12 @@ def getLateheterFusionDataset(cls):
             modality_name = selected_cav_base['modality_name']
             sensor_type = self.sensor_type_dict[modality_name]
 
-            # label
-            object_bbx_center, object_bbx_mask, object_ids = self.generate_object_center_single(
+            # label   单车感知训练使用下
+            # object_bbx_center, object_bbx_mask, object_ids = self.generate_object_center_single(
+            #     [selected_cav_base], selected_cav_base["params"]["lidar_pose_clean"]
+            # )
+            # 单车感知推理调用协同标签使用下
+            object_bbx_center, object_bbx_mask, object_ids = self.generate_object_center(
                 [selected_cav_base], selected_cav_base["params"]["lidar_pose_clean"]
             )
 

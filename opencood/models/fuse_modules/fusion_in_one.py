@@ -118,7 +118,8 @@ class MaxFusion(nn.Module):
             neighbor_feature = warp_affine_simple(batch_node_features[b],
                                             t_matrix[i, :, :, :],
                                             (H, W))
-            out.append(torch.max(neighbor_feature, dim=0)[0])
+            # out.append(torch.max(neighbor_feature, dim=0)[0])
+            out.append(torch.mean(neighbor_feature, dim=0))
         out = torch.stack(out)
         
         return out
@@ -149,11 +150,33 @@ class AttFusion(nn.Module):
 
         out = torch.stack(out)
         return out
+    
+class PixelWeightLayer(nn.Module):
+    def __init__(self, channel):
+        super(PixelWeightLayer, self).__init__()
+        self.conv1_1 = nn.Conv2d(channel * 2, 128, kernel_size=1, stride=1, padding=0)
+        self.bn1_1 = nn.BatchNorm2d(128)
+
+        self.conv1_2 = nn.Conv2d(128, 32, kernel_size=1, stride=1, padding=0)
+        self.bn1_2 = nn.BatchNorm2d(32)
+
+        self.conv1_3 = nn.Conv2d(32, 8, kernel_size=1, stride=1, padding=0)
+        self.bn1_3 = nn.BatchNorm2d(8)
+
+        self.conv1_4 = nn.Conv2d(8, 1, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        x = x.view(-1, x.size(-3), x.size(-2), x.size(-1))
+        x = F.relu(self.bn1_1(self.conv1_1(x)))
+        x = F.relu(self.bn1_2(self.conv1_2(x)))
+        x = F.relu(self.bn1_3(self.conv1_3(x)))
+        x = self.conv1_4(x)
+        return x
 
 class DiscoFusion(nn.Module):
     def __init__(self, feature_dims):
         super(DiscoFusion, self).__init__()
-        from opencood.models.fuse_modules.disco_fuse import PixelWeightLayer
+        # from opencood.models.fuse_modules.disco_fuse import PixelWeightLayer
         self.pixel_weight_layer = PixelWeightLayer(feature_dims)
 
     def forward(self, xx, record_len, affine_matrix):
