@@ -4,12 +4,17 @@
 
 基于开源项目HEAL开展研究
 
+- 多模态特征编码（BEV）
+- 位姿误差校正
+- 多尺度特征融合
+
 # 数据集设置
 
     """
     griffin数据格式-
     data/GRIFFIN
       |-drone_camera_bottom\griffin_50scenes_25m\griffin-release\drone-side\camera\bottom 无人机摄像头数据.png
+      |-vehicle_camera_front/griffin_50scenes_25m/griffin-release/vehicle-side/camera/front 无人车摄像头数据.png
       |-drone_metadata\griffin_50scenes_25m\griffin-release\drone-side 无人机元数据
         |-calib 相机定标
         |-label 标签
