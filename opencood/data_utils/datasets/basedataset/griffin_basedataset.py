@@ -107,6 +107,9 @@ class GRIFFINBaseDataset(Dataset):
         veh_pose_path=os.path.join(self.root_dir, 'vehicle_metadata/griffin_50scenes_25m/griffin-release/vehicle-side/pose', veh_frame_id+'.json')
         veh_label_path=os.path.join(self.root_dir, 'vehicle_metadata/griffin_50scenes_25m/griffin-release/vehicle-side/label', veh_frame_id+'.txt')
 
+        veh_camera_path=os.path.join(self.root_dir, 'vehicle_camera_front/griffin_50scenes_25m/griffin-release/vehicle-side/camera/front', veh_frame_id+'.png')
+        veh_calib_path=os.path.join(self.root_dir, 'vehicle_metadata/griffin_50scenes_25m/griffin-release/vehicle-side/calib', 'front.json')
+
         drone_camera_path=os.path.join(self.root_dir, 'drone_camera_bottom/griffin_50scenes_25m/griffin-release/drone-side/camera/bottom', veh_frame_id+'.png')
         drone_pose_path=os.path.join(self.root_dir, 'drone_metadata/griffin_50scenes_25m/griffin-release/drone-side/pose', veh_frame_id+'.json')
         drone_label_path=os.path.join(self.root_dir, 'drone_metadata/griffin_50scenes_25m/griffin-release/drone-side/label', veh_frame_id+'.txt')
@@ -120,11 +123,12 @@ class GRIFFINBaseDataset(Dataset):
         data[0]['params'] = OrderedDict()
         data[1]['params'] = OrderedDict()
         intrinsic, extrinsic, distortion = griffin_untils.load_calibration_json_griffin(drone_calib_path)
-
+        intrinsic_veh, extrinsic_veh, distortion_veh = griffin_untils.load_calibration_json_griffin(veh_calib_path)
         data[0]['params']['lidar_pose']= griffin_untils.read_pose_json_griffin(veh_pose_path)
         data[1]['params']['lidar_pose']= griffin_untils.read_pose_json_griffin(drone_pose_path)
 
         data[0]['params']['vehicles_single_all'] = griffin_untils.load_label_txt(veh_label_path)
+        data[0]['params']['vehicles_single_all'] = griffin_untils.filter_labels_in_image(griffin_untils.load_label_txt(veh_label_path), intrinsic_veh, np.linalg.inv(extrinsic_veh), (1080, 1920))
         #griffin是五个镜头的标签，这里过滤标签只保留无人机底部摄像头的标签
         data[1]['params']['vehicles_single_all'] = griffin_untils.filter_labels_in_image(griffin_untils.load_label_txt(drone_label_path), intrinsic, extrinsic, (1080, 1920))
         
@@ -135,12 +139,28 @@ class GRIFFINBaseDataset(Dataset):
                   griffin_untils.transform_labels(data[1]['params']['vehicles_single_all'], data[1]['params']['lidar_pose']),
                   iou_threshold=0.8)
         data[1]['params']['vehicles_all']=[]
+
+        # data[0]['params']['vehicles_all_ego'] =\
+        #       griffin_untils.merge_labels(
+        #           data[0]['params']['vehicles_single_all'], data[0]['params']['lidar_pose'], 
+        #           griffin_untils.transform_labels_to_ego(data[1]['params']['vehicles_single_all'], data[1]['params']['lidar_pose'], data[1]['params']['lidar_pose']),
+        #           iou_threshold=0.8)
+        
+        data[0]['params']['vehicles_all_ego'] = griffin_untils.merge_labels(
+                data[0]['params']['vehicles_single_all'],
+                griffin_untils.transform_labels_to_ego(
+                    data[1]['params']['vehicles_single_all'],
+                    data[0]['params']['lidar_pose'],   # ego pose
+                    data[1]['params']['lidar_pose'],   # agent pose
+                ),
+                iou_threshold=0.95
+            )
      
         if self.load_camera_file:
-            data[0]['camera_data']=[]
+            data[0]['camera_data']=griffin_untils.load_camera_data_griffin([veh_camera_path])
             data[0]['params']['camera0'] = OrderedDict()
-            data[0][ 'params']['camera0']['extrinsic'] = []
-            data[0]['params']['camera0']['intrinsic'] = []
+            data[0][ 'params']['camera0']['extrinsic'] = np.linalg.inv(extrinsic_veh) #这里的外参是相机到无人机坐标系的平移旋转4*4矩阵
+            data[0]['params']['camera0']['intrinsic'] = intrinsic_veh
 
             data[1]['camera_data']=griffin_untils.load_camera_data_griffin([drone_camera_path])
             data[1]['params']['camera0'] = OrderedDict()
@@ -155,12 +175,13 @@ class GRIFFINBaseDataset(Dataset):
 
         
 
-        #将所有标签转为dairv2x格式
+
         data[0]['params']['vehicles_all'] = griffin_untils.griffin_label_to_dairv2x_label_coop(data[0]['params']['vehicles_all'])
         data[0]['params']['vehicles_front'] = data[0]['params']['vehicles_all']
         data[1]['params']['vehicles_all'] = []
         data[1]['params']['vehicles_front'] = []
 
+        # data[0]['params']['vehicles_single_all'] = griffin_untils.griffin_label_to_dairv2x_label(data[0]['params']['vehicles_all_ego'])
         data[0]['params']['vehicles_single_all'] = griffin_untils.griffin_label_to_dairv2x_label(data[0]['params']['vehicles_single_all'])
         data[1]['params']['vehicles_single_all'] = griffin_untils.griffin_label_to_dairv2x_label(data[1]['params']['vehicles_single_all'])
 
