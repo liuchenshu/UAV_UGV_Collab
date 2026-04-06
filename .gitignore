@@ -151,6 +151,7 @@ box_align_items
 stage1_boxes/
 bash_script/
 dataset
+data
 opencood/logs
 opencood/logs_HEAL
 opencood/logs_baseline
