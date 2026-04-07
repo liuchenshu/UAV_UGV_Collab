@@ -146,15 +146,15 @@ class GRIFFINBaseDataset(Dataset):
         #           griffin_untils.transform_labels_to_ego(data[1]['params']['vehicles_single_all'], data[1]['params']['lidar_pose'], data[1]['params']['lidar_pose']),
         #           iou_threshold=0.8)
         
-        data[0]['params']['vehicles_all_ego'] = griffin_untils.merge_labels(
-                data[0]['params']['vehicles_single_all'],
-                griffin_untils.transform_labels_to_ego(
-                    data[1]['params']['vehicles_single_all'],
-                    data[0]['params']['lidar_pose'],   # ego pose
-                    data[1]['params']['lidar_pose'],   # agent pose
-                ),
-                iou_threshold=0.95
-            )
+        # data[0]['params']['vehicles_all_ego'] = griffin_untils.merge_labels(
+        #         data[0]['params']['vehicles_single_all'],
+        #         griffin_untils.transform_labels_to_ego(
+        #             data[1]['params']['vehicles_single_all'],
+        #             data[0]['params']['lidar_pose'],   # ego pose
+        #             data[1]['params']['lidar_pose'],   # agent pose
+        #         ),
+        #         iou_threshold=0.95
+        #     )
      
         if self.load_camera_file:
             data[0]['camera_data']=griffin_untils.load_camera_data_griffin([veh_camera_path])
