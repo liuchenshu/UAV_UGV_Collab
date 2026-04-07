@@ -103,11 +103,11 @@ def visualize(infer_result, pcd, pc_range, save_path, method='3d', left_hand=Fal
             canvas_xy, valid_mask = canvas.get_canvas_coords(pcd_np) # Get Canvas Coords
             canvas.draw_canvas_points(canvas_xy[valid_mask]) # Only draw valid points
             if gt_box_tensor is not None:
-                canvas.draw_boxes(gt_box_np,colors=(0,255,0), texts=gt_name)
-                # canvas.draw_boxes(gt_box_np,colors=(0,255,0), texts=['']*len(gt_name), box_line_thickness=4) # paper visualization
+                # canvas.draw_boxes(gt_box_np,colors=(0,255,0), texts=gt_name)
+                canvas.draw_boxes(gt_box_np,colors=(0,255,0), texts=['']*len(gt_name), box_line_thickness=4) # paper visualization
             if pred_box_tensor is not None:
-                canvas.draw_boxes(pred_box_np, colors=(255,0,0), texts=pred_name)
-                # canvas.draw_boxes(pred_box_np, colors=(255,0,0), texts=['']*len(pred_name), box_line_thickness=4) # paper visualization
+                # canvas.draw_boxes(pred_box_np, colors=(255,0,0), texts=pred_name)
+                canvas.draw_boxes(pred_box_np, colors=(255,0,0), texts=['']*len(pred_name), box_line_thickness=4) # paper visualization
 
             # heterogeneous
             agent_modality_list = infer_result.get("agent_modality_list", None)
