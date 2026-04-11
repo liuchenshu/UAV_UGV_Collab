@@ -140,6 +140,13 @@ def inference_early_fusion(batch_data, model, dataset):
     output_dict = OrderedDict()
     cav_content = batch_data['ego']
     output_dict['ego'] = model(cav_content)
+    # print("output_dict['ego'] keys: ", output_dict['ego'].keys())
+    # print("output_dict['ego']['cls_preds_single'] shape: ", output_dict['ego']['cls_preds_single'].shape)
+    # print("output_dict['ego']['cls_preds']: ", output_dict['ego']['cls_preds'].shape)
+    # print("output_dict['ego']['reg_preds_single'] shape: ", output_dict['ego']['reg_preds_single'].shape)
+    # print("output_dict['ego']['reg_preds'] shape: ", output_dict['ego']['reg_preds'].shape)
+    # print("output_dict['ego']['dir_preds_single'] shape: ", output_dict['ego']['dir_preds_single'].shape)
+    # print("output_dict['ego']['dir_preds'] shape: ", output_dict['ego']['dir_preds'].shape)
     
     pred_box_tensor, pred_score, gt_box_tensor = \
         dataset.post_process(batch_data,
@@ -152,6 +159,131 @@ def inference_early_fusion(batch_data, model, dataset):
         return_dict.update({"depth_items" : output_dict['ego']['depth_items']})
     return return_dict
 
+def inference_intermediate_fusion_withsingle(batch_data, model, dataset):
+    """
+    Model inference for intermediate fusion with single cav.
+
+    Parameters
+    ----------
+    batch_data : dict
+    model : opencood.object
+    dataset : opencood.IntermediateFusionDataset
+
+    Returns
+    -------
+    pred_box_tensor : torch.Tensor
+        The tensor of prediction bounding box after NMS.
+    gt_box_tensor : torch.Tensor
+        The tensor of gt bounding box.
+    """
+    output_dict_ego = OrderedDict()
+    output_dict_ego['ego'] = model(batch_data['ego'])
+    
+    pred_box_tensor, pred_score, gt_box_tensor = \
+        dataset.post_process(batch_data, output_dict_ego)
+    print("pred_box_tensor shape: ", pred_box_tensor.shape)
+    print("pred_score shape: ", pred_score.shape)
+    print("gt_box_tensor shape: ", gt_box_tensor.shape)
+    
+    return_dict = {"pred_box_tensor" : pred_box_tensor, \
+                    "pred_score" : pred_score, \
+                    "gt_box_tensor" : gt_box_tensor}
+    agent_number= output_dict_ego['ego']['cls_preds_single'].shape[0]
+    return_dict.update({"agent_number": agent_number})
+    # agent_number = batch_data['ego']['record_len'][0].item() if 'record_len' in batch_data['ego'] else output_dict_ego['ego']['cls_preds_single'].shape[0]
+    # return_dict.update({"agent_number": agent_number})
+    print("batch_data['ego'].key: ", batch_data['ego'].keys())
+    pairwise_t_matrix = batch_data['ego']['pairwise_t_matrix']
+    print(f"Transform matrix: {pairwise_t_matrix}")
+    for i in range(agent_number):
+        output_dict_ego_single = OrderedDict({"ego": {}})
+        output_dict_ego_single['ego']['cls_preds'] = output_dict_ego['ego']['cls_preds_single'][i:i+1]
+        output_dict_ego_single['ego']['reg_preds'] = output_dict_ego['ego']['reg_preds_single'][i:i+1]
+        output_dict_ego_single['ego']['dir_preds'] = output_dict_ego['ego']['dir_preds_single'][i:i+1]
+        # print(f"output_dict_ego_single['ego']['cls_preds'] shape: ", output_dict_ego_single['ego']['cls_preds'].shape)
+        pred_box_tensor_single, pred_score_single, gt_box_tensor_single = \
+            dataset.post_process(batch_data, output_dict_ego_single)
+
+        print(f"pred_box_tensor_single_{i} shape: ", pred_box_tensor_single.shape)
+        print(f"pred_score_single_{i} shape: ", pred_score_single.shape)
+        print(f"gt_box_tensor_single_{i} shape: ", gt_box_tensor_single.shape)
+        if(i != 0):
+            pred_box_tensor_single = project_box3d(pred_box_tensor_single, pairwise_t_matrix[0, i, 0])
+        return_dict.update({f"pred_box_tensor_single_{i}": pred_box_tensor_single,
+                            f"pred_score_single_{i}": pred_score_single,
+                            f"gt_box_tensor_single_{i}": gt_box_tensor_single}) 
+    return return_dict
+
+def inference_intermediate_fusion_withsingle_v1(batch_data, model, dataset):
+    """
+    Intermediate fusion inference + per-agent single-branch decoding.
+    Assumes inference batch_size == 1.
+    """
+    output_dict_ego = OrderedDict()
+    output_dict_ego["ego"] = model(batch_data["ego"])
+
+    # fused prediction (original collaborative branch)
+    pred_box_tensor, pred_score, gt_box_tensor = \
+        dataset.post_process(batch_data, output_dict_ego)
+
+    return_dict = {
+        "pred_box_tensor": pred_box_tensor,
+        "pred_score": pred_score,
+        "gt_box_tensor": gt_box_tensor
+    }
+
+    ego_out = output_dict_ego["ego"]
+    if "cls_preds_single" not in ego_out or "reg_preds_single" not in ego_out:
+        # single head not available, return fused only
+        return return_dict
+
+    cls_single = ego_out["cls_preds_single"]   # [N_agent_total, C, H, W]
+    reg_single = ego_out["reg_preds_single"]   # [N_agent_total, 7*anchor, H, W]
+    dir_single = ego_out.get("dir_preds_single", None)
+
+    # For inference, batch_size is 1 => record_len has one element
+    record_len = batch_data["ego"]["record_len"]
+    if torch.is_tensor(record_len):
+        num_agents = int(record_len[0].item())
+    else:
+        num_agents = int(record_len[0])
+
+    return_dict["agent_number"] = num_agents
+
+    # pairwise_t_matrix shape: [B, L, L, 4, 4], pairwise[i, j] = T_{j<-i}
+    # agent i -> ego(0) => pairwise[0, i, 0]
+    pairwise_t = batch_data["ego"]["pairwise_t_matrix"][0]
+    anchor_box = batch_data["ego"]["anchor_box"]
+
+    for i in range(num_agents):
+        # IMPORTANT: create fresh dict each loop (no shallow copy)
+        single_data_dict = OrderedDict({
+            "ego": {
+                "anchor_box": anchor_box,
+                "transformation_matrix": pairwise_t[i, 0].float(),
+                "transformation_matrix_clean": pairwise_t[i, 0].float()
+            }
+        })
+
+        single_out_ego = {
+            "cls_preds": cls_single[i:i+1],
+            "reg_preds": reg_single[i:i+1]
+        }
+        if dir_single is not None:
+            single_out_ego["dir_preds"] = dir_single[i:i+1]
+
+        output_dict_ego_single = OrderedDict({"ego": single_out_ego})
+
+        pred_box_tensor_single, pred_score_single, gt_box_tensor_single = \
+            dataset.post_processor.post_process(single_data_dict, output_dict_ego_single)
+
+        return_dict.update({
+            f"pred_box_tensor_single_{i}": pred_box_tensor_single,
+            f"pred_score_single_{i}": pred_score_single,
+            f"gt_box_tensor_single_{i}": gt_box_tensor_single
+        })
+
+    return return_dict
 
 def inference_intermediate_fusion(batch_data, model, dataset):
     """
@@ -172,6 +304,9 @@ def inference_intermediate_fusion(batch_data, model, dataset):
     """
     return_dict = inference_early_fusion(batch_data, model, dataset)
     return return_dict
+
+
+
 
 
 def save_prediction_gt(pred_tensor, gt_tensor, pcd, timestamp, save_path):

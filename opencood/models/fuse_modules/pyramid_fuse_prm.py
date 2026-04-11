@@ -82,10 +82,7 @@ class PyramidFusion(ResNetBEVBackbone):
 
         # 【新增：实例化你的位姿校正器】
         # 这里仅作功能挂载，无参数，因此无需加载预训练权重
-        self.pose_corrector = CartographerPoseCorrector(
-            trans_range=1.0, # 可根据你的特征分辨率进行调节
-            rot_range=1.0
-        )
+        self.pose_corrector = CartographerPoseCorrector()
         
         # add single supervision head
         for i in range(self.num_levels):
