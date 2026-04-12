@@ -1,6 +1,43 @@
 import open3d as o3d
 import numpy as np
 import yaml
+
+# agcdrive_untils.py
+from copy import deepcopy
+from opencood.utils.transformation_utils import x1_to_x2
+from opencood.utils import box_utils
+
+def transform_single_labels_between_agents(label_list, src_pose, dst_pose, order='hwl'):
+    """
+    label_list: DAIR-style single labels in src agent frame
+    src_pose/dst_pose: [x, y, z, roll, yaw, pitch]
+    return: labels in dst agent frame
+    """
+    T_dst_src = x1_to_x2(src_pose, dst_pose)  # p_dst = T_dst_src * p_src
+    out = []
+
+    for obj in label_list:
+        x = float(obj['3d_location']['x'])
+        y = float(obj['3d_location']['y'])
+        z = float(obj['3d_location']['z'])
+        l = float(obj['3d_dimensions']['l'])
+        h = float(obj['3d_dimensions']['h'])
+        w = float(obj['3d_dimensions']['w'])
+        yaw = float(obj['rotation'])
+
+        box_src = np.array([[x, y, z, h, w, l, yaw]], dtype=np.float32)
+        corners_src = box_utils.boxes_to_corners_3d(box_src, order=order)      # (1,8,3)
+        corners_dst = box_utils.project_box3d(corners_src, T_dst_src)          # (1,8,3)
+        box_dst = box_utils.corner_to_center(corners_dst, order=order)[0]      # (7,)
+
+        obj_new = deepcopy(obj)
+        obj_new['3d_location'] = {'x': float(box_dst[0]), 'y': float(box_dst[1]), 'z': float(box_dst[2])}
+        obj_new['3d_dimensions'] = {'h': float(box_dst[3]), 'w': float(box_dst[4]), 'l': float(box_dst[5])}
+        obj_new['rotation'] = float(box_dst[6])
+        out.append(obj_new)
+
+    return out
+
 def load_lidar_pcd(file_path):
     """_summary_
 

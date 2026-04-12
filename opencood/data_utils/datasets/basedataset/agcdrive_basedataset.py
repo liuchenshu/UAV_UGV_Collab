@@ -130,12 +130,18 @@ class AGCDRIVEBaseDataset(Dataset):
         data[2]['params']['vehicles_front'] = []
 
         data[0]['params']['vehicles_single_all']=agcdrive_untils.agcdrive_to_dairv2x_label(data[0]['params']['vehicles_all'])
-        data[1]['params']['vehicles_single_all']=[]
-        data[2]['params']['vehicles_single_all']=[]
+        # data[1]['params']['vehicles_single_all']=[]
+        # data[2]['params']['vehicles_single_all']=[]
+        data[1]['params']['vehicles_single_all'] = agcdrive_untils.transform_single_labels_between_agents(
+            data[0]['params']['vehicles_single_all'], data[0]['params']['lidar_pose'], data[1]['params']['lidar_pose'], order='hwl'
+        )
+        data[2]['params']['vehicles_single_all'] = agcdrive_untils.transform_single_labels_between_agents(
+            data[0]['params']['vehicles_single_all'], data[0]['params']['lidar_pose'], data[2]['params']['lidar_pose'], order='hwl'
+        )
 
         data[0]['params']['vehicles_single_front']=data[0]['params']['vehicles_single_all']
-        data[1]['params']['vehicles_single_front']=[]
-        data[2]['params']['vehicles_single_front']=[]
+        data[1]['params']['vehicles_single_front']=data[1]['params']['vehicles_single_all']
+        data[2]['params']['vehicles_single_front']=data[2]['params']['vehicles_single_all']
 
         if self.load_lidar_file or self.visualize:
             data[0]['lidar_np']=agcdrive_untils.load_lidar_pcd(lidar_agent1_path)
